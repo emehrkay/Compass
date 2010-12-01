@@ -299,7 +299,6 @@ class Document(BaseObject):
     def delete(self):
         url = self.action['delete'] % (self.db_url, self.db_name, self.id)
         response, content = self.db_request.delete(url=url)
-        print url, response.status, content
         
         if response.status != 204:
             raise CompassException(content)

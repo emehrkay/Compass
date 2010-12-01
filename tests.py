@@ -224,7 +224,18 @@ class DocumentTests(unittest.TestCase):
         self.assertTrue(result)
         
     def test_can_delete_document(self):
-        pass
+        try:
+            global document_id
+            
+            document = self.database.document(name='test to be deleted', create=True)
+            
+            document.delete()
+            
+            result = True
+        except CompassException, e:
+            result = False
+            
+        self.assertTrue(result)
     
     
 
