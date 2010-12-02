@@ -57,7 +57,8 @@ class BaseObject(object):
 
 class Server(BaseObject):
     action = {
-        'info': '%s/server'
+        'info': '%s/server',
+        'disconnect': '%s/disconnect'
     }
     
     def __init__(self, url, username, password):
@@ -79,6 +80,10 @@ class Server(BaseObject):
             raise CompassException(content)
             
         return self
+    
+    def disconnect(self):
+        url = self.action['disconnect'] % (self.url)
+        response, content = self.request.get(url)
             
     def database(self, name, credentials=ADMIN, create=False):
         if create:
@@ -135,6 +140,9 @@ class Database(BaseObject):
             raise CompassException(content)
             
         return self
+        
+    def close(self):
+        
         
     def cluster(self, class_name):
         url = Cluster.action['get'] % (self.url, self.name, class_name)
@@ -216,7 +224,11 @@ class Cluster(BaseObject):
 class Klass(BaseObject):
     action = {
         'get': '%s/class/%s/%s/%s',
-        'post': '%s/class/%s/%s'
+        'post': '%s/class/%s/%s',
+        'property': {
+            'post': '%s/property/%s/%s/%s',
+            'delete': '%/property/%s/%s/%s'
+        }
     }
     
     def __init__(self, database, name=None, schema=None, documents=None):
@@ -239,6 +251,24 @@ class Klass(BaseObject):
             
     def document(self, rid=None, **data):
         return self.database.document(rid=rid, class_name=self.name, **data)
+        
+    def property(self, name, create=True, **rules):
+        if create:
+            url = self.action['property']['post'] % (self.database.url, self.database.name, 
+                                                     self.name, name)
+            response, content = self.database.request.post(url)
+            
+            if response.status == 200:
+                return self
+            else:
+                raise CompassException(content)
+        else:
+            url = self.action['property']['delete'] % (self.database.url, self.database.name, 
+                                                     self.name, name)
+            response, content = self.database.request.delete(url)
+            
+            if response.status != 200:
+                raise CompassException(content)
 
 
 class Document(BaseObject):
