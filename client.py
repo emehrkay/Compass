@@ -83,7 +83,7 @@ class Server(BaseObject):
     
     def disconnect(self):
         url = self.action['disconnect'] % (self.url)
-        response, content = self.request.get(url)
+        self.request.get(url)
             
     def database(self, name, credentials=ADMIN, create=False):
         if create:
@@ -233,11 +233,7 @@ class Cluster(BaseObject):
 class Klass(BaseObject):
     action = {
         'get': '%s/class/%s/%s/%s',
-        'post': '%s/class/%s/%s',
-        'property': {
-            'post': '%s/property/%s/%s/%s',
-            'delete': '%s/property/%s/%s/%s'
-        }
+        'post': '%s/class/%s/%s'
     }
     
     def __init__(self, database, name=None, schema=None, documents=None):
@@ -262,28 +258,67 @@ class Klass(BaseObject):
         return self.database.document(rid=rid, class_name=self.name, **data)
         
     def property(self, name, create=True):
-        if create:
-            url = self.action['property']['post'] % (self.database.url, self.database.name, 
-                                                     self.name, name)
-            response, content = self.database.request.post(url, data={})
-
-            if response.status == 201:
-                self.database.reload(callback=self._defineSchema)
-            else:
-                raise CompassException(content)
-        else:
-            url = self.action['property']['delete'] % (self.database.url, self.database.name, 
-                                                     self.name, name)
-            response, content = self.database.request.delete(url)
-
-            if response.status != 204:
-                raise CompassException(content)
+        if create and name not in self.schema:
+            try:
+                prop = KlassProperty(name=name, klass=self,
+                                     callback=self._define_schema)
+            except CompassException:
+                raise
                 
-    def _defineSchema(self):
+        elif name in self.schema:
+            prop = self.schema[name]
+            
+            prop.delete()
+            del self.schema[name]
+                
+    def _define_schema(self):
         for klass in self.database.data['classes']:
             if klass['name'] == self.name:
-                self.schema = klass['properties']
+                self.schema = []
+                
+                for prop in klass['properties']:
+                    self.schema.append({klass['name']: 
+                                        KlassProperty(name=prop['name'],
+                                                      klass=self, data=prop)
+                                       })
+                
+                
 
+class KlassProperty(BaseObject):
+    action = {
+        'post': '%s/property/%s/%s/%s',
+        'delete': '%s/property/%s/%s/%s'
+    }
+    
+    def __init__(self, name, klass, data=None, callback=None):
+        super(KlassProperty, self).__init__(data=None)
+        
+        self.name = name
+        self.klass = klass
+        
+        if callback is not None:
+            self._create(callback=callback)
+        
+    def delete(self):
+        url = self.action['delete'] % (self.klass.database.url, 
+                                       self.klass.database.name, 
+                                       self.klass.name, self.name)
+        response, content = self.klass.database.request.delete(url)
+
+        if response.status != 204:
+            raise CompassException(content)
+            
+    def _create(self, callback):
+        url = self.action['post'] % (self.klass.database.url, 
+                                     self.klass.database.name, 
+                                     self.klass.name, self.name)
+        response, content = self.klass.database.request.post(url, data={})
+
+        if response.status == 201:
+            self.klass.database.reload(callback=callback)
+        else:
+            raise CompassException(content)
+    
 
 class Document(BaseObject):
     action = {
