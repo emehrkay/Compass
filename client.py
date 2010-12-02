@@ -31,6 +31,9 @@ class BaseObject(object):
 
     def save(self):
         pass
+        
+    def delete(self):
+        pass
 
     def __len__(self):
         return len(self.data)
@@ -70,23 +73,23 @@ class Server(BaseObject):
         self.username = username
         self.password = password
         self.request = Request(self.username, self.password)
-        
+
     def info(self):
         url = self.action['info'] % (self.url)
         response, content = self.request.get(url=url)
-        
+
         if response.status == 200:
             self.data = json.loads(content)
             return
         else:
             raise CompassException(content)
-            
+
         return self
-    
+
     def disconnect(self):
         url = self.action['disconnect'] % (self.url)
         self.request.get(url)
-            
+
     def database(self, name, credentials=ADMIN, create=False):
         if create:
             url = Database.action['post'] % (self.url, name)
@@ -101,14 +104,14 @@ class Server(BaseObject):
             user, password = credentials
             request = Request(user, password)
             response, content = request.get(url=url)
-        
+
             if response.status == 200:
                 data = json.loads(content)
                 return Database(self.url, name=name,
                                 credentials=credentials, data=data).connect()
             else:
                 raise CompassException(content)
-        
+
 
 class Database(BaseObject):
     action = {
@@ -118,10 +121,10 @@ class Database(BaseObject):
         'query': '%s/command/%s/%s/%s',
         'cluster': '%s/cluster/%s/%s'
     }
-    
+
     def __init__(self, url, name, credentials, data=None):
         super(Database, self).__init__(data=None)
-        
+
         self.url = url
         self.name = name
         self.credentials = credentials
@@ -132,19 +135,19 @@ class Database(BaseObject):
             self.connect()
         else: 
             self.data = data
-            
+
     def reload(self, callback=None):
         url = self.action['get'] % (self.url, self.name)        
         response, content = self.request.get(url)
 
         if response.status == 200:
             self.data = json.loads(content)
-            
+
             if callback is not None and hasattr(callback, '__call__'):
                 callback()
         else:
             raise CompassException(content)
-        
+
     def connect(self):
         url = self.action['connect'] % (self.url, self.name)        
         response, content = self.request.get(url)
@@ -153,18 +156,18 @@ class Database(BaseObject):
             self.data = json.loads(content)
         else:
             raise CompassException(content)
-            
+
         return self
-        
+
     def cluster(self, class_name):
         url = Cluster.action['get'] % (self.url, self.name, class_name)
         response, content = self.request.get(url)
-        
+
         if response.status == 200:
             return Cluster(database=self, data=json.loads(content))
         else:
             raise CompassException(content)
-                    
+
     def klass(self, name, limit=20, create=False):
         if create:
             url = Klass.action['post'] % (self.url, self.name, name)
@@ -185,7 +188,7 @@ class Database(BaseObject):
                              documents=data['result'])
             else: 
                 raise CompassException(content)
-        
+
     def query(self, query):
         query = urllib.quote(query)
         url = self.action['query'] % (self.url, self.name, self.name, query)
@@ -193,16 +196,16 @@ class Database(BaseObject):
 
         if response.status == 200:
             result = json.loads(content)
-                
+
             return Klass(database=self, documents=result['result'])
         else:
             raise CompassException(content)
-            
+
     def document(self, rid=None, class_name=None, **data):
         if rid:
             url = Document.action['get'] % (self.url, self.name, rid)
             response, content = self.request.get(url)
-            
+
             if response.status == 200:
                 return Document(rid, json.loads(content), database=self)
             else:
@@ -218,7 +221,7 @@ class Database(BaseObject):
                 return self.document(rid=content, database=self)
             else:
                 raise CompassException(content)
-    
+
 
 class Cluster(BaseObject):
     action = {
