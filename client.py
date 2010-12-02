@@ -87,15 +87,15 @@ class Server(BaseObject):
             
     def database(self, name, credentials=ADMIN, create=False):
         if create:
-            url =  Database.action['get'] % (self.url, name)
+            url =  Database.action['post'] % (self.url, name)
             response, content = self.request.post(url=url, data=None)
 
             if response.status == 204:
                 return self.database(name=name, credentials=ADMIN)
             else:
                 raise CompassException(content)
-        elif len(credentials) == 2:
-            url = Database.action['post'] % (self.url, name)
+        else:
+            url = Database.action['get'] % (self.url, name)
             user, password = credentials
             request = Request(user, password)
             response, content = request.get(url=url)
@@ -129,6 +129,18 @@ class Database(BaseObject):
             self.connect()
         else: 
             self.data = data
+            
+    def reload(self, callback=None):
+        url = self.action['get'] % (self.url, self.name)        
+        response, content = self.request.get(url)
+
+        if response.status == 200:
+            self.data = json.loads(content)
+            
+            if callback is not None and hasattr(callback, '__call__'):
+                callback()
+        else:
+            raise CompassException(content)
         
     def connect(self):
         url = self.action['connect'] % (self.url, self.name)        
@@ -224,7 +236,7 @@ class Klass(BaseObject):
         'post': '%s/class/%s/%s',
         'property': {
             'post': '%s/property/%s/%s/%s',
-            'delete': '%/property/%s/%s/%s'
+            'delete': '%s/property/%s/%s/%s'
         }
     }
     
@@ -249,24 +261,28 @@ class Klass(BaseObject):
     def document(self, rid=None, **data):
         return self.database.document(rid=rid, class_name=self.name, **data)
         
-    def property(self, name, create=True, **rules):
+    def property(self, name, create=True):
         if create:
-            rules = rules #to be implemented at a later date
             url = self.action['property']['post'] % (self.database.url, self.database.name, 
                                                      self.name, name)
-            response, content = self.database.request.post(url)
-            
-            if response.status == 200:
-                return self
+            response, content = self.database.request.post(url, data={})
+
+            if response.status == 201:
+                self.database.reload(callback=self._defineSchema)
             else:
                 raise CompassException(content)
         else:
             url = self.action['property']['delete'] % (self.database.url, self.database.name, 
                                                      self.name, name)
             response, content = self.database.request.delete(url)
-            
-            if response.status != 200:
+
+            if response.status != 204:
                 raise CompassException(content)
+                
+    def _defineSchema(self):
+        for klass in self.database.data['classes']:
+            if klass['name'] == self.name:
+                self.schema = klass['properties']
 
 
 class Document(BaseObject):
