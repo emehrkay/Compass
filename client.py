@@ -141,9 +141,6 @@ class Database(BaseObject):
             
         return self
         
-    def close(self):
-        
-        
     def cluster(self, class_name):
         url = Cluster.action['get'] % (self.url, self.name, class_name)
         response, content = self.request.get(url)
@@ -254,6 +251,7 @@ class Klass(BaseObject):
         
     def property(self, name, create=True, **rules):
         if create:
+            rules = rules #to be implemented at a later date
             url = self.action['property']['post'] % (self.database.url, self.database.name, 
                                                      self.name, name)
             response, content = self.database.request.post(url)
