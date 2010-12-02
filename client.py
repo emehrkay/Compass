@@ -2,23 +2,10 @@
 # encoding: utf-8
 """Python client for OrientDB REST serivce"""
 
-import base64
-import datetime
-import re
-import collections
-import httplib
-import time
-from urlparse import urlsplit
 import urllib
-import decimal
-import string
+import json
 
 from request import Request
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
 
 RECORD_ID = '@rid'
 
@@ -31,7 +18,14 @@ class CompassException(Exception):
 
 class BaseObject(object):
     data = {}
-    id = None
+    rid = None
+    _immutable = []
+    
+    def __init__(self, data):
+        if data is None:
+            data = {}
+            
+        self.data = data
     
     def save(self):
         pass
@@ -48,12 +42,16 @@ class BaseObject(object):
     def __getitem__(self, key):
         return self.data[key]
 
-    def __setitem__(self, key, value):
-        if key.startswith('_'):
-            raise KeyError('')
+    def __setitem__(self, key, value):        
+        if key in self._immutable:
+            raise KeyError('%s is not editable' % (key))
+            
         self.data[key] = value
 
     def __delitem__(self, key):
+        if key in self._immutable:
+            raise KeyError('%s is not editable' % (key))
+            
         del self.data[key]
 
 
@@ -63,6 +61,8 @@ class Server(BaseObject):
     }
     
     def __init__(self, url, username, password):
+        super(Server, self).__init__(data=None)
+        
         self.url = url
         self.username = username
         self.password = password
@@ -97,7 +97,8 @@ class Server(BaseObject):
         
             if response.status == 200:
                 data = json.loads(content)
-                return Database(self.url, name=name, credentials=credentials, data=data).connect()
+                return Database(self.url, name=name, 
+                                credentials=credentials, data=data).connect()
             else:
                 raise CompassException(content)
         
@@ -112,6 +113,8 @@ class Database(BaseObject):
     }
     
     def __init__(self, url, name, credentials, data=None):
+        super(Database, self).__init__(data=None)
+        
         self.url = url
         self.name = name
         self.credentials = credentials
@@ -159,7 +162,7 @@ class Database(BaseObject):
             if response.status == 200:
                 data = json.loads(content)
 
-                return Klass(database=self, documents=data['result'])
+                return Klass(database=self, name=name, documents=data['result'])
             else: 
                 raise CompassException(content)
             
@@ -177,21 +180,24 @@ class Database(BaseObject):
             raise CompassException(content)
             
         
-    def document(self, id=None, **data):
-        if id:
-            url = Document.action['get'] % (self.url, self.name, id)
+    def document(self, rid=None, class_name=None, **data):
+        if rid:
+            url = Document.action['get'] % (self.url, self.name, rid)
             response, content = self.request.get(url)
             
             if response.status == 200:
-                return Document(id, json.loads(content), database=self)
+                return Document(rid, json.loads(content), database=self)
             else:
                 raise CompassException(content)            
         else:
+            if class_name is not None:
+                data['@class'] = class_name
+
             url = Document.action['post'] % (self.url, self.name)
             response, content = self.request.post(url, data=data)
 
             if response.status == 201:
-                return self.document(id=content, database=self)
+                return self.document(rid=content, database=self)
             else:
                 raise CompassException(content)
                 
@@ -203,8 +209,8 @@ class Cluster(BaseObject):
     }
     
     def __init__(self, database, data):
+        super(Cluster, self).__init__(data)
         self.database = database
-        self.data = data
                 
 
 class Klass(BaseObject):
@@ -213,38 +219,26 @@ class Klass(BaseObject):
         'post': '%s/class/%s/%s'
     }
     
-    def __init__(self, database, schema={}, documents={}):
+    def __init__(self, database, name=None, schema=None, documents=None):
+        super(Klass, self).__init__(data=None)
+        
+        self.name = name
         self.database = database
+        
+        if schema is None:
+            schema = {}
+        
         self.schema = schema
         
-        for data in documents:
-            self.data[data[RECORD_ID]] = Document(data['@rid'], data, klass=self)
-            
-    def document(self, id=None, **data):
-        if id:
-            url = Document.action['get'] % (self.database.url, self.database.name, id)
-            response, content = self.request.get(url)
-            
-            if response.status == 200:
-                return Document(id, json.loads(content), database=self)
-            else:
-                raise CompassException(content)            
-        else:
-            url = Document.action['post'] % (self.database.url, self.database.name)
-            response, content = self.request.post(url, data=data)
-
-            if response.status == 201:
-                return self.document(id=content, database=self)
-            else:
-                raise CompassException(content)
-            
-    @property
-    def id(self):
-        return self.schema['id']
+        if documents is None:
+            documents = {}
         
-    @property
-    def name(self):
-        return self.schema['name']
+        for data in documents:
+            self.data[data[RECORD_ID]] = Document(data['@rid'], 
+                                                    data, klass=self)
+            
+    def document(self, rid=None, **data):
+        return self.database.document(rid=rid, class_name=self.name, **data)
 
 
 class Document(BaseObject):
@@ -254,10 +248,12 @@ class Document(BaseObject):
         'put': '%s/document/%s',
         'delete': '%s/document/%s/%s'
     }
+    _immutable = ['@rid']
     
-    def __init__(self, id, data, database=None, klass=None):
-        self.id = id
-        self.data = data
+    def __init__(self, rid, data, database=None, klass=None):
+        super(Document, self).__init__(data)
+        
+        self.rid = rid
         self.database = database
         self.klass = klass
         
@@ -279,25 +275,25 @@ class Document(BaseObject):
         else:
             raise CompassException(content)
             
-    def relate(self, field, document=None, id=None, multiple=False):
+    def relate(self, field, document=None, rid=None, multiple=False):
         if document is not None:
-            id = document[RECORD_ID]
+            rid = document[RECORD_ID]
         
         if multiple:
             if isinstance(self[field], list):
                 ids = self[field]
                 
-                if id not in ids:
-                    ids.append(id)
+                if rid not in ids:
+                    ids.append(rid)
                 
                 self[field] = ids
         else:
-            self[field] = id
+            self[field] = rid
             
         return self
         
     def delete(self):
-        url = self.action['delete'] % (self.db_url, self.db_name, self.id)
+        url = self.action['delete'] % (self.db_url, self.db_name, self.rid)
         response, content = self.db_request.delete(url=url)
         
         if response.status != 204:

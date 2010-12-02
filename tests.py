@@ -8,7 +8,7 @@ from client import *
 import random
 
 username = 'root'
-password = 'AFE1D46E7A5FC722CBD5821644B03BD57CC782B7A1585D438A0414CE0B8DE73D'
+password = 'EDEBF121682BF71D0DEDB82459E6B772CDD291F3C0765D7C6B104420604F269C'
 url = 'http://localhost:2480'
 server = Server(url=url, username=username, password=password)
 
@@ -32,7 +32,7 @@ doc_db_name = randomName('doc_db', 1)
 doc_name = randomName('document_', 3)
 doc_class_name = randomName('doc_class', 2)
 class_name = randomName('class_name_', 1)
-document_id = ''
+document_rid = ''
 
 class ServerTests(unittest.TestCase):
     def test_can_retrieve_server_info(self):
@@ -74,11 +74,22 @@ class CreationTests(unittest.TestCase):
         
     def test_can_create_document_on_database(self):
         try:
-            global document_id 
+            global document_rid 
             
             database = server.database(name=doc_db_name, create=True)
-            document = database.document(name=doc_name, data={}, create=True)
-            document_id= document.id
+            document = database.document(name=doc_name, create=True, first_name='mark')
+            document_rid= document.rid
+            result = True
+        except CompassException, e:
+            result = False
+            
+        self.assertTrue(result)
+        
+    def test_can_create_document_on_class(self):
+        try:            
+            database = server.database(name=randomName('doc_class_db', 3), create=True)
+            klass = database.klass(name=class_name, create=True)
+            document = klass.document(name=doc_name, create=True, first_name='MARK')
             result = True
         except CompassException, e:
             result = False
@@ -140,24 +151,12 @@ class DocumentTests(unittest.TestCase):
     def setUp(self):
         self.database = server.database(name=doc_db_name)
         
-    def test_can_retrieve_document_property(self):
-        try:
-            global document_id
-            document = self.database.document(id=document_id)
-            result = True
-        except CompassException, e:
-            result = False
-            
-        self.assertTrue(result)
-        
     def test_can_retrieve_document_value(self):
         try:
-            global document_id
+            global document_rid
             
-            document = self.database.document(id=document_id)
+            document = self.database.document(rid=document_rid)
             result = True
-
-            document['name']
         except CompassException, e:
             result = False
             
@@ -165,9 +164,9 @@ class DocumentTests(unittest.TestCase):
         
     def test_can_set_document_value(self):
         try:
-            global document_id
+            global document_rid
             
-            document = self.database.document(id=document_id)
+            document = self.database.document(rid=document_rid)
             result = True
             
             document[u'last name'] = 'ahhhhh'
@@ -176,15 +175,15 @@ class DocumentTests(unittest.TestCase):
             
         self.assertTrue(result)
         
-    def test_can_connect_document_by_id(self):
+    def test_can_connect_document_by_rid(self):
         try:
-            global document_id
+            global document_rid
             
-            document = self.database.document(id=document_id)
+            document = self.database.document(rid=document_rid)
             document2 = self.database.document(create=True, data={})
-            id2 = document2.id
+            id2 = document2.rid
             
-            document.relate(field='knows', id=id2)
+            document.relate(field='knows', rid=id2)
             
             result = True
         except CompassException, e:
@@ -194,9 +193,9 @@ class DocumentTests(unittest.TestCase):
         
     def test_can_connect_document_by_document(self):
         try:
-            global document_id
+            global document_rid
             
-            document = self.database.document(id=document_id)
+            document = self.database.document(rid=document_rid)
             document2 = self.database.document(create=True, data={})
             
             document.relate(field='knows', document=document2)
@@ -209,9 +208,9 @@ class DocumentTests(unittest.TestCase):
         
     def test_can_save_docuemnt(self):
         try:
-            global document_id
+            global document_rid
             
-            document = self.database.document(id=document_id)
+            document = self.database.document(rid=document_rid)
             
             document['who'] = 'me'
             
@@ -225,7 +224,7 @@ class DocumentTests(unittest.TestCase):
         
     def test_can_delete_document(self):
         try:
-            global document_id
+            global document_rid
             
             document = self.database.document(name='test to be deleted', create=True)
             
