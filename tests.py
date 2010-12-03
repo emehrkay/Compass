@@ -96,6 +96,21 @@ class CreationTests(unittest.TestCase):
             
         self.assertTrue(result)
         
+    def test_can_create_property_on_class(self):
+        try:
+            database = server.database(name=randomName('doc_class_db', 3), create=True)
+            klass = database.klass(name=randomName('random_class', 2), create=True)
+            klass.property(name=randomName('property', 1))
+            
+            if len(klass.schema) > 0:
+                result = True
+            else:
+                reslut = False
+        except CompassException, e:
+            result = False;
+            
+        self.assertTrue(result)
+        
         
 class RetrievalTests(unittest.TestCase):
     def test_can_retrieve_database(self):
@@ -236,7 +251,45 @@ class DocumentTests(unittest.TestCase):
             
         self.assertTrue(result)
     
+
+class KlassTests(unittest.TestCase):
+    def setUp(self):
+        self.database = server.database(name=randomName('class_test_db', 3), create=True)
+        self.klass = self.database.klass(name=randomName('random_class', 2), create=True)
     
+    def test_can_create_property(self):
+        try:
+            original_len = len(self.klass.schema)
+            
+            self.klass.property(name=randomName('prop_', 3))
+            
+            if len(self.klass.schema) > original_len:
+                result = True
+            else:
+                result = False
+        except CompassException, e:
+            result = False;
+            
+        self.assertTrue(result)
+        
+    def test_can_delete_property(self):
+        try:
+            self.klass.property(name=randomName('prop1_', 3))
+            self.klass.property(name=randomName('prop2_', 3))
+            
+            original_len = len(self.klass.schema)
+            keys = self.klass.schema.keys()
+            
+            del self.klass.schema[keys[0]]
+            
+            if len(self.klass.schema) < original_len:
+                result = True
+            else:
+                result = False
+        except CompassException, e:
+            result = False;
+            
+        self.assertTrue(result)
 
 if __name__ == '__main__':
     server_suite = unittest.TestLoader().loadTestsFromTestCase(ServerTests)
@@ -253,3 +306,6 @@ if __name__ == '__main__':
     
     document_suite = unittest.TestLoader().loadTestsFromTestCase(DocumentTests)
     unittest.TextTestRunner(verbosity=3).run(document_suite)
+    
+    klass_suite = unittest.TestLoader().loadTestsFromTestCase(KlassTests)
+    unittest.TextTestRunner(verbosity=3).run(klass_suite)

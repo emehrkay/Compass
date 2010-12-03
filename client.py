@@ -8,7 +8,6 @@ import json
 from request import Request
 
 RECORD_ID = '@rid'
-
 ADMIN = ('admin', 'admin')
 READER = ('reader', 'reader')
 WRITER = ('writer', 'writer')
