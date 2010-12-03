@@ -276,14 +276,12 @@ class Klass(BaseObject):
                 
     def _define_schema(self):
         for klass in self.database.data['classes']:
-            if klass['name'] == self.name:
-                self.schema = []
-                
+            if klass['name'] == self.name:                
                 for prop in klass['properties']:
-                    self.schema.append({klass['name']: 
-                                        KlassProperty(name=prop['name'],
-                                                      klass=self, data=prop)
-                                       })
+                    if klass['name'] not in self.schema:
+                        self.schema[klass['name']] = KlassProperty(
+                                                        name=prop['name'],
+                                                        klass=self, data=prop)
 
 
 class KlassProperty(BaseObject):
