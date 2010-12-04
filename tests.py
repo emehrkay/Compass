@@ -29,7 +29,7 @@ class_db_name = randomName('database_', 2)
 doc_db_name = randomName('doc_db', 1)
 doc_name = randomName('document_', 3)
 doc_class_name = randomName('doc_class', 2)
-class_name = randomName('class_name_', 1)
+class_name = randomName('class_name_', 1) 
 document_rid = ''
 
 class ServerTests(unittest.TestCase):
