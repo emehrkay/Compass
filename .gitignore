@@ -1,2 +1,3 @@
+# files to ignore
 *.pyc
-x.py
+x.py 

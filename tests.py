@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import sys
-import os
 import unittest
 from client import *
 import random
 
 username = 'root'
-password = 'EDEBF121682BF71D0DEDB82459E6B772CDD291F3C0765D7C6B104420604F269C'
+password = 'AFE1D46E7A5FC722CBD5821644B03BD57CC782B7A1585D438A0414CE0B8DE73D'
 url = 'http://localhost:2480'
 server = Server(url=url, username=username, password=password)
 
@@ -152,10 +150,12 @@ class DatabaseTests(unittest.TestCase):
         try:
             query = 'select * from %s' % (class_name)
             database = server.database(name=class_db_name)
+            klass = database.query(query=query)
             
-            database.query(query=query)
-            
-            result = True
+            if isinstance(klass, Klass):
+                result = True
+            else:
+                reslut = False
         except CompassException, e:
             result = False
             
@@ -288,6 +288,24 @@ class KlassTests(unittest.TestCase):
                 result = False
         except CompassException, e:
             result = False;
+            
+        self.assertTrue(result)
+        
+    def test_can_run_query_and_get_results(self):
+        try:
+            class_name = randomName('new_class', 2)
+            new_class = self.database.klass(name=class_name, create=True)
+            doc1 = new_class.document(name=randomName('random_doc', 3))
+            doc2 = new_class.document(name=randomName('random_doc', 3))
+            query = 'select * from %s' % (class_name)
+            new_class.query(query=query)
+
+            if len(new_class) == 2:
+                result = True
+            else:
+                result = False
+        except CompassException, e:
+            result = False
             
         self.assertTrue(result)
 

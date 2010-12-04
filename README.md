@@ -5,7 +5,7 @@ Compass is a simple Python REST interface for the OrientDB graph document store.
 Requirements
 -------------
 * Python 2.6 
-* OrientDB Rest Server
+* [OrientDB Rest Server](http://www.orientechnologies.com/)
 
 Classes
 -------------
@@ -68,7 +68,7 @@ Connect to or retrieve an existing database. Upon database creation, three users
     result_klass = demo_db.query('SELECT * FROM Address WHERE city = "Cupertino"')
     
 **Klass Object**
-The class object will eventually all you to define a schema for all documents that belong to it. The latest build of OrientDB's rest server does not allow for creation of properties that define certain attributes (required, max, min length, etc), it will in a later release
+The class object will eventually allow you to define a schema for all documents that belong to it. The latest build of OrientDB's rest server does not allow for creation of properties that define certain attributes (required, max, min length, etc), it will in a later release
 
     #retrieve a class
     addresses = demo_db.klass(name='Address')
