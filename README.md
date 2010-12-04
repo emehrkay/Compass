@@ -29,6 +29,15 @@ Using compass is simple, all failures will raise a CompassException.
     import compass
 	import json
 	
+**Exceptions**
+All actions throw a CompassException if it happens to fail. Good practice would be to wrap all code in a try except construct to capture any errors.
+
+    try:
+        server = client.server(url='http://localhost:2480')
+    except CompassException, e:
+        print e #should return a 401 with an error message
+    
+	
 **Server Connection**
 To connect to the server you need to locate the user defined in the orientdb-server-config.xml file. Once you start the server for the first time, the user is root and the password is automatically generated.
     
@@ -39,13 +48,57 @@ To connect to the server you need to locate the user defined in the orientdb-ser
     
 **Database Interactions**
 Connect to or retrieve an existing database. Upon database creation, three users are created; admin, writer, and reader. Those are defined as a simple tuple so if you create a custom user, store the credentials as such.
+    
+    #create a demo database
+    demo_db = server.database(name='client_demo', create=True, 
+                              credentials=client.ADMIN)
+                              
+    #add a new class to the database
+    address_class = demo_db.klass(name='Address', create=True)
+    
+    #add a document directly to that class
+    apple_doc = address_class.document(address1='1 Infinite Loop', 
+                                       city='Cupertino', state='CA', zip='95014')
+                                       
+    #add another document to the database object, but give it the class 'Address'
+    microsoft_doc = demo_db.document(class_name='Address', address1='One Microsoft Way'...)
+    
+    #query documents this returns a Klass object with its data member made up of Document objects. 
+    #The key is the record_id (@rid) and value is the Document object
+    result_klass = demo_db.query('SELECT * FROM Address WHERE city = "Cupertino"')
+    
+**Klass Object**
+The class object will eventually all you to define a schema for all documents that belong to it. The latest build of OrientDB's rest server does not allow for creation of properties that define certain attributes (required, max, min length, etc), it will in a later release
 
-    try:
-        demo_db = server.database(name='demo', create=True, 
-                                  credentials=client.ADMIN)
-        address_class = demo_db.klass(name='Address', create=True)
-        apple_doc = address_class.document(address1='1 Infinite Loop', 
-                                           city='Cupertino', state='CA', zip='95014')
-        microsoft_doc = demo_db.document(class_name='Address', address1='One Microsoft Way'...)
-    except CompassException, e:
-        print e
+    #retrieve a class
+    addresses = demo_db.klass(name='Address')
+    
+    #add a property to the schema
+    addresses.property(name='country')
+    
+    #display the schema 
+    print addresses.schema # [dict] key is the property name, value is a KlassProperty object
+    
+    #modify a property -- this will matter in a future release, the save interface is not defined yet
+    country_prop = addresses.schema['country']
+    country_prop['required'] = True
+    
+    #remove a property
+    addresses.schema['country'].delete()
+    
+**Document**
+Documents should be created from a Database or Klass object, it is possible to create a document using the Document constructor, but a Database or Klass needs to be passed in as an argument.
+
+    #update a document
+    apple_doc['country'] = 'USA'
+    
+    #save
+    apple_doc.save()
+    
+    #delete
+    apple_doc.delete()
+    
+    #connect a document to another one
+    #multiple will store the connections as a list
+    other_document = demo_db.document(field='Value')
+    apple_doc.relate(field='connections', document=other_document, multiple=True)

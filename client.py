@@ -220,7 +220,7 @@ class Database(BaseObject):
             else: 
                 raise CompassException(content)
 
-    def query(self, query):
+    def query(self, query, klass=None):
         """Sends a reqeust to the server based on a query"""
         query = urllib.quote(query)
         url = self.action['query'] % (self.url, self.name, self.name, query)
@@ -228,8 +228,11 @@ class Database(BaseObject):
 
         if response.status == 200:
             result = json.loads(content)
-
-            return Klass(database=self, documents=result['result'])
+            
+            if isinstance(klass, Klass):
+                klass.define_documents(result['result'])
+            else:
+                return Klass(database=self, documents=result['result'])
         else:
             raise CompassException(content)
 
@@ -282,13 +285,22 @@ class Klass(BaseObject):
         
         self.schema = schema
         
+        self.define_documents(documents)
+
+    def define_documents(self, documents=None):    
         if documents is None:
             documents = {}
+            
+        keys = self.data.keys()
         
         for data in documents:
-            self.data[data[RECORD_ID]] = Document(data['@rid'], 
-                                                    data, klass=self)
-            
+            if data[RECORD_ID] not in keys:
+                self.data[data[RECORD_ID]] = Document(data['@rid'], 
+                                                      data, klass=self)
+    
+    def query(self, query):
+        return self.database.query(query=query, klass=self)
+
     def document(self, rid=None, **data):
         return self.database.document(rid=rid, class_name=self.name, **data)
         
