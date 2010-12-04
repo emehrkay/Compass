@@ -24,6 +24,28 @@ Usage
 -------------
 Using compass is simple, all failures will raise a CompassException.
     
+**Imports**
+    
     import compass
 	import json
+	
+**Server Connection**
+To connect to the server you need to locate the user defined in the orientdb-server-config.xml file. Once you start the server for the first time, the user is root and the password is automatically generated.
     
+    user = 'root'
+    password = 'EDEBF121682BF71D0DEDB82459E6B772CDD291F3C0765D7C6B104420604F269C'
+    url = 'http://localhost:2480'
+    server = client.Server(url=url, username=username, password=password)
+    
+**Database Interactions**
+Connect to or retrieve an existing database. Upon database creation, three users are created; admin, writer, and reader. Those are defined as a simple tuple so if you create a custom user, store the credentials as such.
+
+    try:
+        demo_db = server.database(name='demo', create=True, 
+                                  credentials=client.ADMIN)
+        address_class = demo_db.klass(name='Address', create=True)
+        apple_doc = address_class.document(address1='1 Infinite Loop', 
+                                           city='Cupertino', state='CA', zip='95014')
+        microsoft_doc = demo_db.document(class_name='Address', address1='One Microsoft Way'...)
+    except CompassException, e:
+        print e
