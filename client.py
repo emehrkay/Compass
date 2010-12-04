@@ -14,10 +14,12 @@ WRITER = ('writer', 'writer')
 
 
 class CompassException(Exception):
+    """General purpose Compass Exception Object"""
     pass
 
 
 class BaseObject(object):
+    """This is the base object for all Compass Objects"""
     data = {}
     rid = None
     _immutable = []
@@ -29,9 +31,17 @@ class BaseObject(object):
         self.data = data
 
     def save(self):
+        """
+        If an extending object has a save action,
+        it will overwrite this method
+        """
         pass
         
     def delete(self):
+        """
+        If an extending object has a delete action,
+        it will overwrite this method
+        """
         pass
 
     def __len__(self):
@@ -60,6 +70,7 @@ class BaseObject(object):
 
 
 class Server(BaseObject):
+    """This Object handles all Server-based interactions"""
     action = {
         'info': '%s/server',
         'disconnect': '%s/disconnect'
@@ -74,6 +85,10 @@ class Server(BaseObject):
         self.request = Request(self.username, self.password)
 
     def info(self):
+        """
+        This method queries the server for all of the
+        information related to it 
+        """
         url = self.action['info'] % (self.url)
         response, content = self.request.get(url=url)
 
@@ -86,10 +101,16 @@ class Server(BaseObject):
         return self
 
     def disconnect(self):
+        """Sends a disconnect request to the server"""
         url = self.action['disconnect'] % (self.url)
         self.request.get(url)
 
     def database(self, name, credentials=ADMIN, create=False):
+        """Sends a request the server for a database
+        will both add new and query existing databases.
+        
+        Returns a Datase object
+        """
         if create:
             url = Database.action['post'] % (self.url, name)
             response, content = self.request.post(url=url, data=None)
@@ -113,6 +134,7 @@ class Server(BaseObject):
 
 
 class Database(BaseObject):
+    """Database object"""
     action = {
         'connect': '%s/connect/%s',
         'get': '%s/database/%s',
@@ -136,6 +158,9 @@ class Database(BaseObject):
             self.data = data
 
     def reload(self, callback=None):
+        """This method will repopulate the 
+        data property of for the Database object
+        """
         url = self.action['get'] % (self.url, self.name)        
         response, content = self.request.get(url)
 
@@ -148,6 +173,7 @@ class Database(BaseObject):
             raise CompassException(content)
 
     def connect(self):
+        """Creats a connection to the database"""
         url = self.action['connect'] % (self.url, self.name)        
         response, content = self.request.get(url)
 
@@ -159,6 +185,7 @@ class Database(BaseObject):
         return self
 
     def cluster(self, class_name):
+        """Queries the server for a Cluster object"""
         url = Cluster.action['get'] % (self.url, self.name, class_name)
         response, content = self.request.get(url)
 
@@ -168,6 +195,11 @@ class Database(BaseObject):
             raise CompassException(content)
 
     def klass(self, name, limit=20, create=False):
+        """Sends a request the server for class information
+        will both add new and query existing classes.
+        
+        Returns a Klass object
+        """
         if create:
             url = Klass.action['post'] % (self.url, self.name, name)
             response, content = self.request.post(url, data={})
@@ -189,6 +221,7 @@ class Database(BaseObject):
                 raise CompassException(content)
 
     def query(self, query):
+        """Sends a reqeust to the server based on a query"""
         query = urllib.quote(query)
         url = self.action['query'] % (self.url, self.name, self.name, query)
         response, content = self.request.post(url, data={})
