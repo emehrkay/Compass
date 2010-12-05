@@ -230,7 +230,7 @@ class Database(BaseObject):
             result = json.loads(content)
             
             if isinstance(klass, Klass):
-                klass.define_documents(result['result'])
+                klass.define_documents(result['result'], reset=True)
             else:
                 return Klass(database=self, documents=result['result'])
         else:
@@ -287,9 +287,12 @@ class Klass(BaseObject):
         
         self.define_documents(documents)
 
-    def define_documents(self, documents=None):    
+    def define_documents(self, documents=None, reset=False):    
         if documents is None:
             documents = {}
+            
+        if reset:
+            self.data = {}
             
         keys = self.data.keys()
         
