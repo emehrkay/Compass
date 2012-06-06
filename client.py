@@ -105,17 +105,17 @@ class Server(BaseObject):
         url = self.action['disconnect'] % (self.url)
         self.request.get(url)
 
-    def database(self, name, credentials=ADMIN, create=False):
+    def database(self, name, credentials=ADMIN, create=False, storage='memory'):
         """Sends a request the server for a database
         will both add new and query existing databases.
         
         Returns a Datase object
         """
         if create:
-            url = Database.action['post'] % (self.url, name)
+            url = Database.action['post'] % (self.url, name, storage)
             response, content = self.request.post(url=url, data=None)
 
-            if response.status == 204:
+            if response.status == 200:
                 return self.database(name=name, credentials=ADMIN)
             else:
                 raise CompassException(content)
@@ -138,15 +138,16 @@ class Database(BaseObject):
     action = {
         'connect': '%s/connect/%s',
         'get': '%s/database/%s',
-        'post': '%s/database/%s',
+        'post': '%s/database/%s/%s',
         'query': '%s/command/%s/%s/%s',
         'cluster': '%s/cluster/%s/%s'
     }
 
-    def __init__(self, url, name, credentials, data=None):
+    def __init__(self, url, name, credentials, lang='sql', data=None):
         super(Database, self).__init__(data=None)
 
         self.url = url
+        self.lang = lang
         self.name = name
         self.credentials = credentials
         self.request = Request(username=credentials[0],
@@ -215,15 +216,20 @@ class Database(BaseObject):
             if response.status == 200:
                 data = json.loads(content)
 
-                return Klass(database=self, name=name, 
-                             documents=data['result'])
-            else: 
+                if data.has_key('result'):
+                    data = data['result']
+                else:
+                    data = None;
+
+                return Klass(database=self, name=name,
+                    documents=data)
+            else:
                 raise CompassException(content)
 
     def query(self, query, klass=None):
         """Sends a reqeust to the server based on a query"""
         query = urllib.quote(query)
-        url = self.action['query'] % (self.url, self.name, self.name, query)
+        url = self.action['query'] % (self.url, self.name, self.lang, query)
         response, content = self.request.post(url, data={})
 
         if response.status == 200:
@@ -238,6 +244,7 @@ class Database(BaseObject):
 
     def document(self, rid=None, class_name=None, **data):
         if rid:
+            rid = rid.replace("#", "", 1)
             url = Document.action['get'] % (self.url, self.name, rid)
             response, content = self.request.get(url)
 
@@ -378,6 +385,8 @@ class Document(BaseObject):
     
     def __init__(self, rid, data, database=None, klass=None):
         super(Document, self).__init__(data)
+
+        rid = rid.replace("#", "", 1)
         
         self.rid = rid
         self.database = database

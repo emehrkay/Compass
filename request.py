@@ -286,7 +286,11 @@ class Request(object):
         if isinstance(data, (str, unicode)) and data.startswith('http://'):
             body = data
         else:
-            body = self._json_encode(data, ensure_ascii=True)
+            ## OrientDB reset Socket if body is '{}'
+            if data is not None and len(data) > 0 :
+                body = self._json_encode(data, ensure_ascii=True)
+            else:
+                body = '';
         try:
             response, content = http.request(url, method, headers=headers,
                                              body=body)
