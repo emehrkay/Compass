@@ -95,6 +95,8 @@ class Server(BaseObject):
         if response.status == 200:
             self.data = json.loads(content)
             return
+	elif response.status == 204:
+	    return 
         else:
             raise CompassException(content)
 
@@ -180,6 +182,8 @@ class Database(BaseObject):
 
         if response.status == 200:
             self.data = json.loads(content)
+	elif response.status == 204:
+	    pass
         else:
             raise CompassException(content)
 
@@ -192,6 +196,8 @@ class Database(BaseObject):
 
         if response.status == 200:
             return Cluster(database=self, data=json.loads(content))
+	elif response.status == 204:
+	    pass
         else:
             raise CompassException(content)
 
@@ -258,9 +264,11 @@ class Database(BaseObject):
 
             url = Document.action['post'] % (self.url, self.name)
             response, content = self.request.post(url, data=data)
-
+	    content = json.loads(content)
+	    rid = content[RECORD_ID]
+	    rid = rid.replace("#", "", 1)
             if response.status == 201:
-                return self.document(rid=content, database=self)
+                return self.document(rid=rid, database=self)
             else:
                 raise CompassException(content)
 
@@ -305,7 +313,7 @@ class Klass(BaseObject):
         
         for data in documents:
             if data[RECORD_ID] not in keys:
-                self.data[data[RECORD_ID]] = Document(data['@rid'], 
+                self.data[data[RECORD_ID]] = Document(data[RECORD_ID], 
                                                       data, klass=self)
     
     def query(self, query):
