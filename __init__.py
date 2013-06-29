@@ -1,1 +1,1 @@
-from compass import *
+from client import *
